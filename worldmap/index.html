@@ -47,6 +47,7 @@
     <script type="text/javascript" src="leaflet/Leaflet.fullscreen.min.js"></script>
     <script type="text/javascript" src="leaflet/l.ellipse.min.js"></script>
     <script type="text/javascript" src="leaflet/milsymbol.js"></script>
+    <script type="text/javascript" src="leaflet/nvg.js"></script>
     <script type="text/javascript" src="leaflet/leaflet-heat.js"></script>
     <script type="text/javascript" src="leaflet/TileLayer.Grayscale.js"></script>
     <script type="text/javascript" src="leaflet/TileLayer.GrayscaleWMS.js"></script>
@@ -67,7 +68,7 @@
 </div>
 <div id="results">
     <span id="searchRes"></span>
-    <span id="bars" onclick='toggleMenu()' onmouseover='toggleMenu()'><i class="fa fa-bars fa-2x fa-inverse"></i></span>
+    <span id="bars" onclick='toggleMenu()'><i class="fa fa-bars fa-2x fa-inverse"></i></span>
 </div>
 <div id="menu"><table>
     <tr><td><input type='text' name='search' id='search' size='20' style="width:150px;"/>&nbsp;<span onclick='doSearch();'><i class="fa fa-search fa-lg"></i></span></td></tr>
@@ -129,20 +130,20 @@ var layercontrol;
 var ws;
 
 var iconSz = {
-  "Team/Crew": 5,
-  "Squad": 10,
-  "Section": 15,
-  "Platoon/detachment": 20,
-  "Company/battery/troop": 25,
+  "Team/Crew": 17.5,
+  "Squad": 20,
+  "Section": 22.5,
+  "Platoon/detachment": 25,
+  "Company/battery/troop": 27.5,
   "Battalion/squadron": 30,
-  "Regiment/group": 35,
-  "Brigade": 40,
-  "Division": 45,
-  "Corps/MEF": 50,
-  "Army": 55,
-  "Army Group/front": 60,
-  "Region/Theater": 65,
-  "Command": 70
+  "Regiment/group": 32.5,
+  "Brigade": 35,
+  "Division": 37.5,
+  "Corps/MEF": 40,
+  "Army": 45,
+  "Army Group/front": 50,
+  "Region/Theater": 50,
+  "Command": 50
 };
 
 // Create the socket
@@ -186,7 +187,7 @@ connect();
 document.addEventListener ("keydown", function (ev) {
     if (ev.ctrlKey  &&  ev.altKey  &&  ev.code === "Digit3") {
         ws.close();
-        window.onbeforeunload = null;
+        //window.onbeforeunload = null;
         window.location.href = "index3d.html";
     }
 });
@@ -211,7 +212,15 @@ if ( window.localStorage.hasOwnProperty("maxage") ) {
 // Create the Initial Map object.
 map = new L.map('map').setView(startpos, startzoom);
 
-var menuButton = L.easyButton( 'fa-bars fa-lg', function() { toggleMenu(); }, "Toggle menu", "topright");
+var menuButton = L.easyButton({states:[{icon:'fa-bars fa-lg', onClick:function() { toggleMenu(); }, title:'Toggle menu'}], position:"topright"});
+//var colorPickButton = L.easyButton({states:[{icon:'fa-tint fa-lg', onClick:function() { console.log("PICK"); }, title:'Pick Colour'}]});
+var redButton = L.easyButton('fa-square wm-red', function(btn) { console.log("RED",btn); })
+var blueButton = L.easyButton('fa-square wm-blue', function(btn) { console.log("BLUE",btn); })
+var greenButton = L.easyButton('fa-square wm-green', function(btn) { console.log("GREEN",btn); })
+var yellowButton = L.easyButton('fa-square wm-yellow', function(btn) { console.log("YELLOW",btn); })
+var blackButton = L.easyButton('fa-square wm-black', function(btn) { console.log("BLACK",btn); })
+var colorControl = L.easyBar([redButton,blueButton,greenButton,yellowButton,blackButton]);
+
 
 // Move some bits around if in an iframe
 if (window.self !== window.top) {
@@ -230,9 +239,9 @@ if (window.self !== window.top) {
 }
 else {
     console.log("NOT in an iframe")
-    window.onbeforeunload = function(e) {
-        return 'Reloading will delete all the local markers, including any drawing on the "drawing" layer';
-    };
+    // window.onbeforeunload = function(e) {
+    //     return 'Reloading will delete all the local markers, including any drawing on the "drawing" layer';
+    // };
     if (!showUserMenu) {
         document.getElementById("bars").style.display="none";
     }
@@ -262,6 +271,7 @@ if (!inIframe) {
     }, "Clears the current heatmap", "bottomright");
 }
 else { if (showUserMenu) { menuButton.addTo(map); } }
+
 
 // Handle the dialog for popup help
 var dialog = document.querySelector('dialog');
@@ -325,11 +335,11 @@ function doTidyUp(l) {
                 }
                 delete markers[m];
             }
-            if (l) {
-                layercontrol.removeLayer(layers[l]);
-                delete overlays[l];
-            }
         }
+    }
+    if (l) {
+        if (layers[l]) { map.removeLayer(layers[l]); layercontrol.removeLayer(layers[l]); delete layers[l]; }
+        if (overlays[l]) { map.removeLayer(overlays[l]); layercontrol.removeLayer(overlays[l]); delete overlays[l]; }
     }
 }
 
@@ -435,8 +445,11 @@ map.on('overlayadd', function(e) {
         layers["_daynight"].addLayer(L.terminator());
     }
     if (e.name == "drawing") {
-        map.addControl(drawControl);
         overlays["drawing"].bringToFront();
+        // And the actual draw controls
+        map.addControl(drawControl);
+        // Add the color change button
+        //colorControl.addTo(map);
     }
     ws.send(JSON.stringify({action:"addlayer", name:e.name}));
 });
@@ -451,6 +464,7 @@ map.on('overlayremove', function(e) {
         layers["_daynight"].clearLayers();
     }
     if (e.name == "drawing") {
+        map.removeControl(colorControl);
         map.removeControl(drawControl);
     }
     //else console.log("layer del :",e.name);
@@ -499,20 +513,31 @@ map.on('zoomend', function() {
 //    ws.send(JSON.stringify({action:"rightclick", lat:e.latlng.lat.toFixed(5), lon:e.latlng.lng.toFixed(5)}));
 //});
 
-var rightmenuMap = L.popup().setContent("<input type='text' id='rinput' onkeydown='if (event.keyCode == 13) addThing();' placeholder='name (,icon, layer)'/>");
+var rightmenuMap = L.popup({keepInView:true, minWidth:250}).setContent("<b>Add marker</b><br><input type='text' id='rinput' onkeydown='if (event.keyCode == 13) addThing();' placeholder='name (,icon, layer, colour)'/>");
 
 var rclk;
 var addThing = function() {
     var thing = document.getElementById('rinput').value;
     //console.log(thing);
-    ws.send(JSON.stringify({action:"point", lat:rclk.lat.toFixed(5), lon:rclk.lng.toFixed(5), point:thing}));
     map.closePopup();
     var bits = thing.split(",");
-    var lay = (bits[2] || "drawing").trim();
     var icon = (bits[1] || "circle").trim();
-    var d = {name:bits[0].trim(),layer:lay,icon:icon,lat:rclk.lat,lon:rclk.lng};
+    var lay = (bits[2] || "drawing").trim();
+    var colo = (bits[3] || "#910000").trim();
+    var drag = true;
+    var regi = /^[S,G,E,I,O][A-Z]{4}.*/;  // if it looks like a SIDC code
+    var d;
+    if (regi.test(icon)) {
+        icon = (icon+"------------").substr(0,12);
+        d = {name:bits[0].trim(),layer:lay,SIDC:icon,draggable:drag,lat:rclk.lat,lon:rclk.lng};
+    }
+    else {
+        d = {name:bits[0].trim(),layer:lay,icon:icon,iconColor:colo,draggable:drag,lat:rclk.lat,lon:rclk.lng};
+    }
     setMarker(d);
     map.addLayer(layers[lay]);
+    d.action = "point";
+    ws.send(JSON.stringify(d));
 }
 
 // allow double right click to zoom out
@@ -620,6 +645,12 @@ var NLS_OS_opendata = L.tileLayer('https://geo.nls.uk/maps/opendata/{z}/{x}/{y}.
 });
 basemaps["UK OS Opendata"] = NLS_OS_opendata;
 
+var HikeBike_HikeBike = L.tileLayer('http://{s}.tiles.wmflabs.org/hikebike/{z}/{x}/{y}.png', {
+	maxZoom: 19,
+	attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+});
+basemaps["Hike Bike"] = HikeBike_HikeBike;
+
 var NLS_OS_1919_1947 = L.tileLayer( 'https://nls-{s}.tileserver.com/nls/{z}/{x}/{y}.jpg', {
     attribution: 'Historical Maps Layer, from <a href="https://maps.nls.uk/projects/api/">NLS Maps</a>',
     bounds: [[49.6, -12], [61.7, 3]],
@@ -648,7 +679,13 @@ basemaps["Terrain"] = new L.StamenTileLayer('terrain');
 // Nice watercolour based maps by Stamen Design
 basemaps["Watercolor"] = new L.StamenTileLayer('watercolor');
 
+
 // Now add the overlays
+
+// Add the countries (world-110m) for offline use
+var customTopoLayer = L.geoJson(null, {style: {color:"blue", weight:2, fillColor:"#cf6", fillOpacity:0.04}});
+layers["_countries"] = omnivore.topojson('images/world-50m-flat.json',null,customTopoLayer);
+overlays["countries"] = layers["_countries"];
 
 // Add the day/night overlay
 layers["_daynight"] = new L.LayerGroup();
@@ -686,24 +723,34 @@ map.on('draw:created', function (e) {
     layers["_drawing"].addLayer(layer);
 });
 
-// // Add the roads overlay
-// overlays["roads"] = L.tileLayer('https://otile{s}.mqcdn.com/tiles/1.0.0/{type}/{z}/{x}/{y}.{ext}', {
-//     type: 'hyb',
-//     ext: 'png',
-//     attribution: '<a href="https://www.mapquest.com/">MapQuest</a> &mdash; Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-//     subdomains: '1234',
-//     opacity: 0.9
-// });
-//
 
 overlays["buildings"] = new OSMBuildings(map).load();
 map.removeLayer(overlays["buildings"]);     // Hide it at start
 
-// Add the shipping navigation markers
-//var OpenSeaMap = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
-//    attribution: 'Map data: &copy; <a href="https://www.openseamap.org">OpenSeaMap</a> contributors'
-//});
-//overlays["ship nav"] = OpenSeaMap;
+// Add Roads
+overlays["roads"] = L.tileLayer('https://{s}.tile.openstreetmap.se/hydda/roads_and_labels/{z}/{x}/{y}.png', {
+	maxZoom: 18,
+	attribution: 'Tiles courtesy of <a href="http://openstreetmap.se/" target="_blank">OpenStreetMap Sweden</a> &mdash; Map data &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    opacity: 0.8
+});
+
+// Add Railways
+overlays["railways"] = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
+	maxZoom: 19,
+	attribution: 'Map data: &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> | Map style: &copy; <a href="https://www.OpenRailwayMap.org">OpenRailwayMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+});
+
+// Add Public Transport (Buses)
+overlays["public transport"] = L.tileLayer('http://openptmap.org/tiles/{z}/{x}/{y}.png', {
+	maxZoom: 17,
+	attribution: 'Map data: &copy; <a href="http://www.openptmap.org">OpenPtMap</a> contributors'
+});
+
+// Add the OpenSea markers layer
+overlays["ship nav"] = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: 'Map data: &copy; <a href="https://www.openseamap.org">OpenSeaMap</a> contributors'
+});
 
 if ( window.localStorage.hasOwnProperty("lastlayer") ) {
     if ( basemaps[window.localStorage.getItem("lastlayer")] ) {
@@ -778,7 +825,9 @@ function setMarker(data) {
             //zoomToBoundsOnClick:false
         });
         overlays[lay] = layers[lay];
-        layercontrol.addOverlay(layers[lay],lay);
+        if (showLayerMenu !== false) {
+            layercontrol.addOverlay(layers[lay],lay);
+        }
         map.addLayer(overlays[lay]);
         //console.log("ADDED LAYER",lay,layers);
     }
@@ -861,6 +910,8 @@ function setMarker(data) {
         // Create the icons... handle plane, car, ship, wind, earthquake as specials
         var marker, myMarker;
         var icon, q;
+        var drag = false;
+        if (data.draggable === true) { drag = true; }
         //console.log("ICON",data.icon);
         if (data.icon === "ship") {
             marker = L.boatMarker(ll, {
@@ -881,9 +932,9 @@ function setMarker(data) {
             myMarker = L.divIcon({
                 className:"planeicon",
                 iconAnchor: [16, 16],
-                html:'<img src="'+svgplane+'" style="width:32px; height:32px; -webkit-transform:rotate('+dir+'deg); -moz-transform:rotate('+dir+'deg);"/>',
+                html:'<img src="'+svgplane+'" style="width:32px; height:32px; -webkit-transform:rotate('+dir+'deg); -moz-transform:rotate('+dir+'deg);"/>'
             });
-            marker = L.marker(ll, {title:data.name, icon:myMarker});
+            marker = L.marker(ll, {title:data.name, icon:myMarker, draggable:drag});
             //q = 'https://www.bing.com/images/search?q='+data.icon+'%20'+encodeURIComponent(data.name);
             //words += '<a href=\''+q+'\' target="_thingpic">Pictures</a><br>';
         }
@@ -899,7 +950,7 @@ function setMarker(data) {
                 iconAnchor: [16, 16],
                 html:'<img src="'+svguav+'" style="width:32px; height:32px; -webkit-transform:rotate('+dir+'deg); -moz-transform:rotate('+dir+'deg);"/>',
             });
-            marker = L.marker(ll, {title:data.name, icon:myMarker});
+            marker = L.marker(ll, {title:data.name, icon:myMarker, draggable:drag});
         }
         else if (data.icon === "car") {
             data.iconColor = data.iconColor || "black";
@@ -912,7 +963,7 @@ function setMarker(data) {
                 iconAnchor: [16, 16],
                 html:'<img src="'+svgcar+'" style="width:32px; height:32px; -webkit-transform:rotate('+dir+'deg); -moz-transform:rotate('+dir+'deg);"/>',
             });
-            marker = L.marker(ll, {title:data.name, icon:myMarker});
+            marker = L.marker(ll, {title:data.name, icon:myMarker, draggable:drag});
         }
         else if (data.icon === "arrow") {
             data.iconColor = data.iconColor || "black";
@@ -925,7 +976,7 @@ function setMarker(data) {
                 iconAnchor: [16, 16],
                 html:"'<img src='"+svgarrow+"' style='width:32px; height:32px; -webkit-transform:translate(0px,-16px) rotate("+dir+"deg); -moz-transform:translate(0px,-16px) rotate("+dir+"deg);'/>",
             });
-            marker = L.marker(ll, {title:data.name, icon:myMarker});
+            marker = L.marker(ll, {title:data.name, icon:myMarker, draggable:drag});
         }
         else if (data.icon === "wind") {
             data.iconColor = data.iconColor || "black";
@@ -938,7 +989,7 @@ function setMarker(data) {
                 iconAnchor: [16, 16],
                 html:'<img src="'+svgwind+'" style="width:32px; height:32px; -webkit-transform:rotate('+dir+'deg); -moz-transform:rotate('+dir+'deg);"/>',
             });
-            marker = L.marker(ll, {title:data.name, icon:myMarker});
+            marker = L.marker(ll, {title:data.name, icon:myMarker, draggable:drag});
         }
         else if (data.icon === "satellite") {
             data.iconColor = data.iconColor || "black";
@@ -955,7 +1006,7 @@ function setMarker(data) {
                 iconAnchor: [16, 16],
                 html:'<img src="'+svgsat+'" style="width:32px; height:32px;"/>',
             });
-            marker = L.marker(ll, {title:data.name, icon:myMarker});
+            marker = L.marker(ll, {title:data.name, icon:myMarker, draggable:drag});
         }
         else if ((data.icon === "iss") || (data.icon === "ISS")) {
             data.iconColor = data.iconColor || "black";
@@ -971,7 +1022,7 @@ function setMarker(data) {
                 iconAnchor: [25, 25],
                 html:'<img src="'+svgiss+'" style="width:50px; height:50px;"/>',
             });
-            marker = L.marker(ll, {title:data.name, icon:myMarker});
+            marker = L.marker(ll, {title:data.name, icon:myMarker, draggable:drag});
         }
         else if (data.icon === "locate") {
             data.iconColor = data.iconColor || "cyan";
@@ -988,25 +1039,25 @@ function setMarker(data) {
                 iconAnchor: [16, 16],
                 html:'<img src="'+svglocate+'" style="width:32px; height:32px;"/>',
             });
-            marker = L.marker(ll, {title:data.name, icon:myMarker});
+            marker = L.marker(ll, {title:data.name, icon:myMarker, draggable:drag});
         }
         else if (data.icon === "friend") {
-            marker = L.marker(ll, { icon: L.divIcon({ className: 'circle f', iconSize: [20, 12] }), title: data.name });
+            marker = L.marker(ll, { icon: L.divIcon({ className: 'circle f', iconSize: [20, 12] }), title: data.name, draggable:drag });
         }
         else if (data.icon === "hostile") {
-            marker = L.marker(ll, { icon: L.divIcon({ className: 'circle h', iconSize: [16, 16] }), title: data.name });
+            marker = L.marker(ll, { icon: L.divIcon({ className: 'circle h', iconSize: [16, 16] }), title: data.name, draggable:drag });
         }
         else if (data.icon === "neutral") {
-            marker = L.marker(ll, { icon: L.divIcon({ className: 'circle n', iconSize: [16, 16] }), title: data.name });
+            marker = L.marker(ll, { icon: L.divIcon({ className: 'circle n', iconSize: [16, 16] }), title: data.name, draggable:drag });
         }
         else if (data.icon === "unknown") {
-            marker = L.marker(ll, { icon: L.divIcon({ className: 'circle', iconSize: [16, 16] }), title: data.name });
+            marker = L.marker(ll, { icon: L.divIcon({ className: 'circle', iconSize: [16, 16] }), title: data.name, draggable:drag });
         }
         else if (data.icon === "danger") {
-            marker = L.marker(ll, { icon: L.divIcon({ className: 'up-triangle' }), title: data.name });
+            marker = L.marker(ll, { icon: L.divIcon({ className: 'up-triangle' }), title: data.name, draggable:drag });
         }
         else if (data.icon === "earthquake") {
-            marker = L.marker(ll, { icon: L.divIcon({ className: 'circle e', iconSize: [data.mag*5, data.mag*5] }), title: data.name });
+            marker = L.marker(ll, { icon: L.divIcon({ className: 'circle e', iconSize: [data.mag*5, data.mag*5] }), title: data.name, draggable:drag });
         }
         else if (data.hasOwnProperty("SIDC")) {
             // "SIDC":"SFGPU------E***","name":"1.C2 komp","fullname":"1.C2 komp/FTS/INSS"
@@ -1017,19 +1068,22 @@ function setMarker(data) {
             opts.size = opts.size * (opts.scale || 1);
             myMarker = myMarker.setOptions(opts);
             var myicon = L.icon({
-              iconUrl: myMarker.toDataURL(),
-              iconAnchor: [myMarker.getAnchor().x, myMarker.getAnchor().y],
+                iconUrl: myMarker.toDataURL(),
+                iconAnchor: [myMarker.getAnchor().x, myMarker.getAnchor().y],
+                className: "natoicon",
             });
-            marker =  L.marker(ll, { title:data.name, icon:myicon });
+            marker =  L.marker(ll, { title:data.name, icon:myicon, draggable:drag });
         }
         else if (data.icon && (data.icon.substr(0,3) === "fa-")) {
             var col = data.iconColor || "#910000";
+            var imod = "";
+            if (data.icon.indexOf(" ") === -1) { imod = "fa-2x "; }
             myMarker = L.divIcon({
                 className:"faicon",
-                html: '<center><i class="fa fa-fw fa-2x '+data.icon+'" style="color:'+col+'"></i></center>',
+                html: '<center><i class="fa fa-fw '+imod+data.icon+'" style="color:'+col+'"></i></center>',
                 iconSize: [30, 30]
             });
-            marker = L.marker(ll, {title:data.name, icon:myMarker});
+            marker = L.marker(ll, {title:data.name, icon:myMarker, draggable:drag});
         }
         else {
             myMarker = L.VectorMarkers.icon({
@@ -1038,12 +1092,26 @@ function setMarker(data) {
                 prefix: 'fa',
                 iconColor: 'white'
             });
-            marker = L.marker(ll, {title:data.name, icon:myMarker});
+            marker = L.marker(ll, {title:data.name, icon:myMarker, draggable:drag});
         }
 
         // var createLabelIcon = function(labelText) {
         //     return L.marker(new L.LatLng(51.05, -1.35), {icon:L.divIcon({ html:labelText })});
         // }
+
+        // send new position at end of move event if point is draggable
+        if (data.draggable === true) {
+            marker.name = data.name;
+            if (data.icon) { marker.icon = data.icon; }
+            if (data.iconCOlor) { marker.iconColor = data.iconColor; }
+            if (data.SIDC) { marker.SIDC = data.SIDC; }
+            marker.on('dragend', function (e) {
+                var l = marker.getLatLng().toString().replace('Lng(',', Lon : ').replace(')','')
+                marker.setPopupContent(marker.getPopup().getContent().split("Lat, Lon")[0] + l);
+                ws.send(JSON.stringify({action:"move",name:marker.name,layer:marker.lay,icon:marker.icon,iconColor:marker.iconColor,SIDC:marker.SIDC,lat:parseFloat(marker.getLatLng().lat.toFixed(6)),lon:parseFloat(marker.getLatLng().lng.toFixed(6))}));
+            });
+        }
+        if (data.draggable) { delete data.draggable; }
 
         // remove icon from list of properties, then add all others to popup
         if (data.hasOwnProperty("SIDC") && data.hasOwnProperty("options")) { delete data.options; }
@@ -1082,13 +1150,15 @@ function setMarker(data) {
             }
 
             popped = stay;
-            if (data.hasOwnProperty("popup") && (data.popup == true) ) {
+            if (data.hasOwnProperty("popped") && (data.popped == true) ) {
                 popped = true;
                 popid = data.name;
-                delete data.popup;
+                delete data.popped;
             }
 
             // Add any remaining properties to the info box
+            delete data.lat;
+            delete data.lon;
             for (var i in data) {
                 if ((i != "name") && (i != "length")) {
                     if (typeof data[i] === "object") {
@@ -1098,10 +1168,11 @@ function setMarker(data) {
                     }
                 }
             }
-            marker.bindPopup(words, {keepInView:true, minWidth:348});
+            words = data.popup || words;
+            marker.bindPopup(words + marker.getLatLng().toString().replace('Lng(',', Lon : ').replace(')',''), {keepInView:true, minWidth:348});
             marker._popup.dname = data.name;
             marker.lay = lay;                       // and the layer it is on
-            var rightmenuMarker = L.popup().setContent("<b>"+data.name+"</b><br/><button onclick='delMarker(\""+data.name+"\");'>Delete</button>");
+            var rightmenuMarker = L.popup().setContent("<b>"+data.name+"</b><br/><button id='delbutton' onclick='delMarker(\""+data.name+"\");'>Delete</button>");
             marker.on('contextmenu', function(e) {
                 rightmenuMarker.setLatLng(e.latlng);
                 map.openPopup(rightmenuMarker);
@@ -1161,7 +1232,7 @@ function setMarker(data) {
 }
 
 function doCommand(cmd) {
-    //console.log("COMMAND",cmd);
+    // console.log("COMMAND",cmd);
     // ignore server side initial command if client position already saved.
     // if (cmd.hasOwnProperty("init") && initialposition) {
     //     return;
@@ -1222,10 +1293,35 @@ function doCommand(cmd) {
             map.removeLayer(overlays[cmd.map.overlay]);
             existsalready = true;
         }
-        var opt = cmd.map.opt || {style:function(feature) {return {color:feature.properties.color||feature.properties.roofColor}}};
-        //console.log("OPT",opt);
-
-        opt.onEachFeature = function (f, l) {
+        var opt = cmd.map.opt || { style:function(feature) {
+            var st = { stroke:true, weight:2, fill:true };
+            if (feature.hasOwnProperty("properties")) {
+                st.color = feature.properties.color||feature.properties.roofColor||"black";
+                if (feature.properties.hasOwnProperty("color")) { delete feature.properties.color; }
+                if (feature.properties.hasOwnProperty("roofColor")) { delete feature.properties.roofColor; }
+            }
+            if (feature.hasOwnProperty("properties") && feature.properties.hasOwnProperty('style')) {
+                if (feature.properties.style.hasOwnProperty('stroke')) {
+                    st.color = feature.properties.style.stroke;
+                }
+                if (feature.properties.style.hasOwnProperty('stroke-width')) {
+                    st.weight = feature.properties.style["stroke-width"];
+                }
+                if (feature.properties.style.hasOwnProperty('stroke-opacity')) {
+                    st.opacity = feature.properties.style["stroke-opacity"];
+                }
+                if (feature.properties.style.hasOwnProperty('fill')) {
+                    if (feature.properties.style.fill == "none") { st.fill = false; }
+                    else { st.fillColor = feature.properties.style.fill; }
+                }
+                if (feature.properties.style.hasOwnProperty('fill-opacity')) {
+                    st.fillOpacity = feature.properties.style["fill-opacity"];
+                }
+            }
+            delete feature.properties.style;
+            return st;
+        }};
+        opt.onEachFeature = function (f,l) {
             l.bindPopup('<pre>'+JSON.stringify(f.properties,null,' ').replace(/[\{\}"]/g,'')+'</pre>');
         }
         overlays[cmd.map.overlay] = L.geoJson(cmd.map.geojson,opt);
@@ -1235,6 +1331,64 @@ function doCommand(cmd) {
         map.addLayer(overlays[cmd.map.overlay]);
         if (cmd.map.hasOwnProperty("fit")) { map.fitBounds(overlays[cmd.map.overlay].getBounds()); }
     }
+    // Add a new NVG XML overlay layer
+    if (cmd.map && cmd.map.hasOwnProperty("overlay") && cmd.map.hasOwnProperty("nvg") ) {
+        if (overlays.hasOwnProperty(cmd.map.overlay)) {
+            map.removeLayer(overlays[cmd.map.overlay]);
+            existsalready = true;
+        }
+        var parser = new NVG(cmd.map.nvg);
+        var geoj = parser.toGeoJSON();
+
+        overlays[cmd.map.overlay] = L.geoJson(geoj,{
+            style: function(feature) {
+                var st = { stroke:true, color:"black", weight:2, fill:true };
+            	if (feature.hasOwnProperty("properties") && feature.properties.hasOwnProperty('style')) {
+                    if (feature.properties.style.hasOwnProperty('stroke')) {
+                        st.color = feature.properties.style.stroke;
+                    }
+                    if (feature.properties.style.hasOwnProperty('stroke-width')) {
+                        st.weight = feature.properties.style["stroke-width"];
+                    }
+                    if (feature.properties.style.hasOwnProperty('stroke-opacity')) {
+                        st.opacity = feature.properties.style["stroke-opacity"];
+                    }
+                    if (feature.properties.style.hasOwnProperty('fill')) {
+                        if (feature.properties.style.fill == "none") { st.fill = false; }
+                        else { st.fillColor = feature.properties.style.fill; }
+                    }
+                    if (feature.properties.style.hasOwnProperty('fill-opacity')) {
+                        st.fillOpacity = feature.properties.style["fill-opacity"];
+                    }
+                }
+                return st;
+            }
+        });
+        if (!existsalready) {
+            layercontrol.addOverlay(overlays[cmd.map.overlay],cmd.map.overlay);
+        }
+        map.addLayer(overlays[cmd.map.overlay]);
+        if (cmd.map.hasOwnProperty("fit")) { map.fitBounds(overlays[cmd.map.overlay].getBounds()); }
+    }
+
+    var custIco = function() {
+        var customLayer = L.geoJson();
+        if (cmd.map.hasOwnProperty("icon")) {
+            var col = cmd.map.iconColor || "#910000";
+            var myMarker = L.divIcon({
+                className:"faicon",
+                html: '<center><i class="fa fa-fw '+cmd.map.icon+'" style="color:'+col+'"></i></center>',
+                iconSize: [15, 15],
+            });
+            customLayer = L.geoJson(null, {
+                pointToLayer: function(geoJsonPoint, latlng) {
+                    return L.marker(latlng, {icon: myMarker, title: geoJsonPoint.properties.name});
+                }
+            });
+        }
+        return customLayer;
+    }
+
     // Add a new KML overlay layer
     if (cmd.map && cmd.map.hasOwnProperty("overlay") && cmd.map.hasOwnProperty("kml") ) {
         if (overlays.hasOwnProperty(cmd.map.overlay)) {
@@ -1242,7 +1396,7 @@ function doCommand(cmd) {
             existsalready = true;
         }
         //var opt = {async:true};
-        overlays[cmd.map.overlay] = omnivore.kml.parse(cmd.map.kml);
+        overlays[cmd.map.overlay] = omnivore.kml.parse(cmd.map.kml, null, custIco());
         if (!existsalready) {
             layercontrol.addOverlay(overlays[cmd.map.overlay],cmd.map.overlay);
         }
@@ -1268,7 +1422,8 @@ function doCommand(cmd) {
             map.removeLayer(overlays[cmd.map.overlay]);
             existsalready = true;
         }
-        overlays[cmd.map.overlay] = omnivore.gpx.parse(cmd.map.gpx);
+        overlays[cmd.map.overlay] = omnivore.gpx.parse(cmd.map.gpx, null, custIco());
+
         if (!existsalready) {
             layercontrol.addOverlay(overlays[cmd.map.overlay],cmd.map.overlay);
         }
@@ -1294,10 +1449,10 @@ function doCommand(cmd) {
         if (overlays.hasOwnProperty(cmd.map.overlay)) { existsalready = true; }
         if (cmd.map.hasOwnProperty("wms")) {   // special case for wms
             if (cmd.map.wms === "grey") {
-                overlays[cmd.map.name] = L.tileLayer.graywms(cmd.map.url, cmd.map.opt);
+                overlays[cmd.map.overlay] = L.tileLayer.graywms(cmd.map.url, cmd.map.opt);
             }
             else {
-                overlays[cmd.map.name] = L.tileLayer.wms(cmd.map.url, cmd.map.opt);
+                overlays[cmd.map.overlay] = L.tileLayer.wms(cmd.map.url, cmd.map.opt);
             }
         }
         else if (cmd.map.hasOwnProperty("bounds")) {            //Image Overlay in the bounds specified (2D Array)

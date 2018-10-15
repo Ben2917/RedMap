@@ -1,10 +1,11 @@
 CACHE MANIFEST
-# date: July 17th 2018 - v1.3.5
+# date: Oct 14th 2018 - v1.5.2
 
 CACHE:
 index.html
 favicon.ico
 images/node-red.png
+images/world-50m-flat.json
 css/map.css
 leaflet/L.Terminator.js
 leaflet/Leaflet.fullscreen.min.js
@@ -40,6 +41,7 @@ leaflet/leaflet.measurecontrol.css
 leaflet/leaflet.measurecontrol.js
 leaflet/leaflet.select-layers.min.js
 leaflet/milsymbol.js
+leaflet/nvg.js
 leaflet/OSMBuildings-Leaflet.js
 leaflet/sockjs.min.js
 leaflet/tile.stamen.js

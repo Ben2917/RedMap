@@ -9,18 +9,24 @@ map web page for plotting "things" on.
 
 ### Updates
 
+- v1.5.2 - Make manually added icons moveable by default.
+- v1.5.0 - Add multi-map capability - can now have multiple map endpoints.
+  - Also add built-in world countries overlay layer for offline use.
+- v1.4.6 - allow more variation in fa-icon modifiers, so fa-3x and fa-spin work.
+- v1.4.5 - fix clearing overlays
+- v1.4.4 - add a couple of extra overlay layers, roads, rail, sea
+- v1.4.3 - support custom icon for GPX and KML. Better readme for geojson.
+- v1.4.2 - add NVG layer capability
+- v1.4.1 - let `msg.payload.popup` set the popup contents.
+- v1.4.0 - only send to specific \_sessionid if specified.
+- v1.3.7 - rescale NATO symbols (less variation, not so small)
+- v1.3.6 - setting `msg.payload.draggable = true` will allow a marker to be moved and create a move event on the input node.
 - v1.3.5 - parse numeric inputs (speed, bearing etc) to remove any extra text.
 - v1.3.4 - Add ISS icon
 - v1.3.3 - Bugfix for inline satellite icon
 - v1.3.2 - Bugfix for inline svg icons
-- v1.3.1 - Allow `msg.payload.popup = true` to auto open the info popup.
+- v1.3.1 - Allow `msg.payload.popped = true` to auto open the info popup.
 - v1.3.0 - Add initial 3D page (worldmap/index3d.html), Add ability to add KML, GPX and TOPOJSON overlay layers and optional zoom to fit.
-- v1.2.4 - Let weblink also specify target page. eg `msg.payload.weblink = {name:"BBC News", url:"news.bbc.co.uk", target:"_new"}`
-- v1.2.3 - Add higher maxZoom values for some layers
-- v1.2.2 - re-fix simultaneous command plus payload
-- v1.2.1 - Sort out map initialisation - especially clusterAt values
-- v1.2.0 - Bump version (should have done it for adding velocity layer). Tidy up deletion of marker and tracks.
-- v1.1.16 - Add Velocity layer - for velocity grid type overlays (eg wind, currents, etc)
 
 see [CHANGELOG](https://github.com/dceejay/RedMap/blob/master/CHANGELOG.md) for full list.
 
@@ -47,11 +53,12 @@ The minimum **msg.payload** must contain `name`, `lat` and `lon` properties, e.g
 Optional properties include
 
  - **deleted** : set to <i>true</i> to remove the named marker. (default <i>false</i>)
+ - **draggable** : set to <i>true</i> to allow marker to be moved. (default <i>false</i>)
  - **layer** : specify a layer on the map to add marker to.
  - **speed** : combined with bearing, draws a vector.
  - **bearing** : combined with speed, draws a vector.
  - **accuracy** : combined with bearing, draws a polygon of possible direction.
- - **icon** : <a href="http://fortawesome.github.io/Font-Awesome/icons/" target="mapinfo">font awesome</a> icon name.
+ - **icon** : <a href="https://fontawesome.com/v4.7.0/icons/" target="mapinfo">font awesome</a> icon name.
  - **iconColor** : Standard CSS colour name or #rrggbb hex value.
  - **SIDC** : NATO symbology code (instead of icon). See below.
  - **building** : OSMbulding GeoJSON feature set to add 2.5D buildings to buildings layer. See below.
@@ -61,13 +68,14 @@ Optional properties include
  - **weblink** : adds a link to an external page for more information. Either set a url as a *string*, or an *object* like `{name:"BBC News", url:"news.bbc.co.uk", target:"_new"}`
  - **addtoheatmap** : set to <i>false</i> to exclude point from contributing to heatmap layer. (default true)
  - **intensity** : set to a value of 0.1 - 1.0 to set the intensity of the point on heatmap layer. (default 1.0)
- - **popup** : set to true to automatically open the popup info box.
+ - **popped** : set to true to automatically open the popup info box.
+ - **popup** : html to fill the popup if you don't want the automatic default of the properties list.
 
 Any other `msg.payload` properties will be added to the icon popup text box.
 
 ### Icons
 
-You may select any of the Font Awesome set of [icons](http://fortawesome.github.io/Font-Awesome/icons/).
+You may select any of the Font Awesome set of [icons](https://fontawesome.com/v4.7.0/icons/).
 If you use the name without the fa- prefix (eg `male`) you will get the icon inside a generic marker shape. If you use the fa- prefix (eg `fa-male`) you will get the icon on its own.
 
 There are also several special icons...
@@ -95,7 +103,7 @@ To do this you need to supply a `msg.SIDC` instead of an icon, for example:
     msg.payload = { name: "Emergency Medical Operation",
         lat: 51.05,
         lon: -1.35,
-        SIDC:"ENOPA-------",
+        SIDC: "ENOPA-------",
         options: { fillOpacity:0.8 }
     }
 
@@ -179,7 +187,9 @@ If the payload contains an **area** property - that is an array of co-ordinates,
 then rather than draw a point and icon it draws the polygon. Likewise if it contains a
 **line** property it will draw the polyline.
 
- - **iconColor** : can set the colour of the polygon or line.
+ - **color** : can set the colour of the polygon or line.
+ - **fillColor** : can set the fill colour of the polygon.
+ - **fillOpacity** : can set the opacity of the polygon fill colour.
  - **name** : is used as the id key - so can be redrawn/moved.
  - **layer** : declares which layer you put it on..
 
@@ -190,7 +200,7 @@ than draw a point it will draw a circle. The *radius* property is specified in m
 
     msg.payload = { lat:51.05, lon:-1.35, name:"A3090", radius:3000 }
 
-As per Areas and Lines you may also specify *iconColor*, and *layer*.
+As per Areas and Lines you may also specify *color*, *fillColor*, and *layer*.
 
 If the payload contains a **sdlat** and **sdlon** property instead of *radius* an ellipse will be drawn. The sdlat and sdlon propertys specify the semi-axes of the ellipse.
 These are specified in the Latitude/Longitude format.
@@ -215,7 +225,7 @@ Right-clicking on an icon will allow you to delete it.
 
 If you select the **drawing** layer you can also add polylines, polygons and rectangles.
 
-All these events generate messages that can be received by using a **worldmap in** node. For example:
+All these events generate messages that can be received by using a **worldmap in** node. Examples of messages coming FROM the map include:
 
     { "action": "connected" }
     { "action": "point", "lat": "50.60634", "lon": "-1.66580", "point": "joe,male,mylayer" }
@@ -264,33 +274,61 @@ Optional properties include
 
 #### To add a new base layer
 
+The layer will be called `name`. By default it expects a leaflet Tilelayer style url. You can also use a WMS
+style server by adding a property `wms: true`. (see overlay example below)
+
     msg.payload.command.map = {
         name:"OSMhot",
         url:'http://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
         opt:{ maxZoom:19, attribution:"&copy; OpenStreetMap" }
     };
 
+#### To add a WMS overlay layer - eg US weather radar
+
+To add an overlay instead of a base layer - specify the `overlay` property instead of the `name`.
+
+    msg.payload.command.map = {
+        overlay: "NowCoast",
+        url: 'https://nowcoast.noaa.gov/arcgis/services/nowcoast/radar_meteo_imagery_nexrad_time/MapServer/WmsServer?',
+        opt:  {
+            layers: '1',
+            format: 'image/png',
+            transparent: true,
+            attribution: "NOAA/NWS"
+        },
+        wms: true
+    }
+
 #### To add a new geoJSON overlay
 
     msg.payload.command.map = {
         overlay:"myGeoJSON",
         geojson:{ your geojson feature as an object },
-        opt:{ optional geojson options, style, filter, onEach, Feature, etc },
+        opt:{ optional geojson options, style, etc },
         fit:true
     };
 
+The geojson features may contain a `properties` property. That may also include a `style` with properties - stroke, stroke-width, stroke-opacity, fill, fill-opacity. Any other properties will be listed in the popup.
+
+The `opt` property is optional. See the <a href="https://leafletjs.com/examples/geojson/">Leaflet geojson docs</a> for more info on possible options. Note: only simple options are supported as functions cannot be serialised.
 
 The `fit` property is optional. If present the map will automatically zoom to fit the area relevant to the geojson.
 see http://leafletjs.com/examples/geojson/ for more details about options for opt.
 
 #### To add a new KML, GPX, or TOPOJSON overlay
 
-As per the geojson overlay you can also inject a KML layer or TOPOJSON layer. The syntax is the same but with either a `kml` property - containing the KML string - or a `topojson` property containing the topojson.
+As per the geojson overlay you can also inject a KML layer, GPX layer or TOPOJSON layer. The syntax is the same but with either a `kml` property containing the KML string - a `gpx` property containing a GPX string - or a `topojson` property containing the topojson.
 
     msg.payload.command.map = {
         overlay:"myKML",
         kml:"<kml>...your kml placemarks...</kml>"
     };
+
+
+ For GPX and KML layers, it is possible to define which icon to use for point markers by adding the
+ following properties to `msg.payload.command.map`:
+ - **icon** : <a href="https://fontawesome.com/v4.7.0/icons/" target="mapinfo">font awesome</a> icon name.
+ - **iconColor** : Standard CSS colour name or #rrggbb hex value.
 
 Again the `fit` property can be added to make the map zoom to the relevant area.
 

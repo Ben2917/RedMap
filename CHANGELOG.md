@@ -1,10 +1,22 @@
 ### Change Log for Node-RED Worldmap
 
+ - v1.5.1 - Make manually added icons moveable by default.
+ - v1.5.0 - Add multi-map capability - can now have multiple map endpoints. Issue #40 PR #51
+   - Also add built-in world countries overlay layer for offline use.
+ - v1.4.6 - allow more variation in fa-icon modifiers, so fa-3x and fa-spin work.
+ - v1.4.5 - fix clearing overlays
+ - v1.4.4 - add a couple of extra overlay layers, roads, rail, sea
+ - v1.4.3 - support custom icon for GPX and KML. Better readme for geojson.
+ - v1.4.2 - add NVG layer capability
+ - v1.4.1 - let `msg.payload.popup` set the popup contents.
+ - v1.4.0 - only send to specific _ sessionid if specified.
+ - v1.3.7 - rescale NATO symbols (less variation, not so small)
+ - v1.3.6 - setting `msg.payload.draggable = true` will allow a marker to be moved and create a move event on the input node.
  - v1.3.5 - parse numeric inputs (speed, bearing etc) to remove any extra text.
  - v1.3.4 - Add ISS icon
  - v1.3.3 - Bugfix for inline satellite icon
  - v1.3.2 - Bugfix for inline svg icons
- - v1.3.1 - Allow `msg.payload.popup = true` to auto open the info popup.
+ - v1.3.1 - Allow `msg.payload.popped = true` to auto open the info popup.
  - v1.3.0 - Add initial 3D page (worldmap/index3d.html), Add ability to add KML, GPX and TOPOJSON overlay layers and optional zoom to fit. Change all http: links to https:
  - v1.2.4 - Let weblink also specify target page. eg `msg.payload.weblink = {name:"BBC News", url:"news.bbc.co.uk", target:"_new"}`
  - v1.2.3 - Add higher maxZoom values for some layers
